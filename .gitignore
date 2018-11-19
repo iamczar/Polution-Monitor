@@ -1,0 +1,8 @@
+.gitignore.
+desktop.ini
+working_main/.vs/
+working_main/__vm/
+working_main/desktop.ini
+working_main/working_main.sln
+working_main/working_main.vcxproj
+working_main/working_main.vcxproj.filters
