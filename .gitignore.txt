@@ -1,0 +1,15 @@
+*.ini
+*.sln
+*.vcxproj
+*.vcxproj.filters
+/.vs/
+working_main/.vs/desktop.ini
+working_main/.vs/working_main/desktop.ini
+working_main/.vs/working_main/v15/.suo
+working_main/.vs/working_main/v15/desktop.ini
+working_main/__vm/.working_main.vsarduino.h
+working_main/__vm/desktop.ini
+working_main/desktop.ini
+working_main/working_main.sln
+working_main/working_main.vcxproj
+working_main/working_main.vcxproj.filters
