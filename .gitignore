@@ -34,3 +34,21 @@ pm-opc-n2/pm-opc-n2.sln
 pm-opc-n2/pm-opc-n2.vcxproj
 pm-opc-n2/pm-opc-n2.vcxproj.filters
 
+main/Release/SPI/SPI.cpp.d
+main/Release/SPI/SPI.cpp.o
+main/Release/board.buildinfo
+main/Release/main.cpp.d
+main/Release/main.cpp.o
+main/Release/main.elf
+main/Release/main.hex
+main/Release/main.ino.elf
+main/Release/main.ino.hex
+main/Release/opcn2/opcn2.cpp.d
+main/Release/opcn2/opcn2.cpp.o
+main/__vm/.main.vsarduino.h
+main/__vm/Compile.vmps.xml
+main/__vm/Configuration.Release.vmps.xml
+main/__vm/Upload.vmps.xml
+main/main.vcxproj
+main/main.vcxproj.filters
+
