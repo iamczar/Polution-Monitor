@@ -1,15 +1,34 @@
 #define DEBUG Serial 
 #define DEBUG_BAUDRATE 115200
+
+// uncomment applicable options
 #define DEBUG_NO2
 #define DEBUG_NCO
+#define LCB_AVAIL
+
+// choose which microcontroller you want
+#define TEENSY_SPECIFIC
+//#define ARDUINO_PRO_MINI
 
 #include "opcn2.h"
 #include <SPI.h>
 
+#if defined(LCB_AVAIL)
+#include "LiquidCrystal_I2C.h"
+LiquidCrystal_I2C lcd(0x3F, 2,1,0,4,5,6,7,3,POSITIVE);
+#endif
+
 // OPC-N2 variables
+#if defined(TEENSY_SPECIFIC)
 // chip select is set to pin 10 on Teensy 3.5
-#define CS = 10;
-OPCN2 alpha(10);
+int OPC_CS = 10;
+#elif defined(ARDUINO_PRO_MINI)
+//int OPC_CS = 10;
+#elif defined(ARDUINOR3)
+//int OPC_CS = 10;
+#endif
+
+OPCN2 alpha(OPC_CS);
 HistogramData hist;
 ConfigVars vars;
 
@@ -31,16 +50,17 @@ struct
 	int NO2x;
 } No2;
 
-
 void setup() {
 	DEBUG.begin(DEBUG_BAUDRATE);
 	opc_setup();
+	lcd_setup();
 }
 
 void loop() {
 	No2_loop();
 	Co_loop();
 	opc_printHistogram();
+	lcd_loop();
 }
 
 void opc_setup()
@@ -77,22 +97,64 @@ void opc_printHistogram()
 // reads No2 levels
 void No2_loop() 
 {
-	No2.NO2 = analogRead(NO2_PIN);
-	No2.NO2x = analogRead(NO2x_PIN);
+	No2.NO2 = (int)((analogRead(NO2_PIN)*(5000 / 1024) - 348) / 0.434f);
+	No2.NO2x = (int)((analogRead(NO2x_PIN)*(5000 / 1024) - 348) / 0.434f);
 #if defined(DEBUG_NO2) 
 	DEBUG.println("No2.NO2:" + String(No2.NO2));
 	DEBUG.println("No2.NO2x: " + String(No2.NO2x));
 #endif
 
 }
-
 // reads Co levels
 void Co_loop() 
 {
-	Co.CO = analogRead(CO_PIN);
-	Co.COx = analogRead(COx_PIN);
+	Co.CO = (int)((analogRead(CO_PIN)*(5000 / 1024) - 348) / 0.434f);
+	Co.COx = (int)((analogRead(COx_PIN)*(5000 / 1024) - 348) / 0.434f);
 #if defined(DEBUG_NCO)
 	DEBUG.println("Co.CO: " + String(Co.CO));
 	DEBUG.println("Co.COx: " + String(Co.COx));
 #endif
+}
+
+void lcd_setup() 
+{
+	lcd.begin(20,4);
+	lcd.clear();
+	lcd.print("Monitor Setup");
+	delay(5000);
+}
+
+void lcd_loop() 
+{
+	lcd.display();
+
+	lcd.setCursor(0, 0);
+	lcd.print("Pollution Monitor: ");
+
+	lcd.setCursor(0, 1);
+	lcd.print("CO = " + String(Co.CO));
+
+	lcd.setCursor(0, 2);
+	lcd.print("NO2 = " + String(No2.NO2));
+	//lcd.setCursor(0, 1);
+	//lcd.print("SO2=");
+	//lcd.print(SO2);
+	delay(3000);
+
+
+	//lcd.clear();
+	//if (A0 + A2 + A5 < 1500)
+	//{
+	//	lcd.print("LOW Pollution");
+	//}
+	//
+	//if (A0 + A2 + A5 > 1500)
+	//{
+	//	lcd.print("HIGH Pollution");
+	//}
+	//
+	//delay(3000);
+	lcd.clear();
+
+	lcd.noDisplay();
 }
