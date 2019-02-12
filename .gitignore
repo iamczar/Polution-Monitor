@@ -52,6 +52,12 @@ main/__vm/Upload.vmps.xml
 main/main.vcxproj
 main/main.vcxproj.filters
 
+main/.vs/
+main/Release/
+main/main.sln
+main/main.vcxproj.user
+
+
 basic_scanner/
 
 
