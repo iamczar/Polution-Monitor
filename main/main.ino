@@ -9,17 +9,12 @@
 #define DEBUG_OPC
 #define DEBUG_CLOCK
 
-// uncomment which platform to build it for
-// Note this should be set in the configuration manager
-#define TEENSY_35
-//#define ARDUINO_PRO_MINI
-//#define ARDUINOR3
 
-#if defined (TEENSY_35)
+
+// OPC SENSOR
 #include "opcn2m.h"
-#elif defined (ARDUINOR3) || defined(ARDUINO_PRO_MINI)
-#include "opcn2m.h"
-#endif
+// chip select for opcn2 is set to pin 10 on Teensy 3.5
+int OPC_CS = 10;
 
 #include <SPI.h>
 
@@ -27,64 +22,28 @@
 #include <SparkFunDS3234RTC.h>
 
 // plug the LCD module to the I2C bus
-#if defined(TEENSY_35) || defined(ARDUINOR3)
-#define LCB_AVAIL
-#if defined(LCB_AVAIL)
 #include "LiquidCrystal_I2C.h"
+
+// Instantiate an LCD
 LiquidCrystal_I2C lcd(0x3F, 2,1,0,4,5,6,7,3,POSITIVE);
-#endif
 
-// NOTE: Arduino Pro mini won't have an LCD component
-#endif
-
-#if defined(TEENSY_35)
 #include <SD.h>
 // SD variables
 int sd_log_counter;
-bool sd_is_file_open = false;
+bool is_sd_file_open = false;
 String pollutionLogStr;
 File PollutionLog;
 const char sd_file_name[] = "T35data.csv";
 
-// chip select for opcn2 is set to pin 10 on Teensy 3.5
-int OPC_CS = 10;
-
 // DS13074 chip select pin 
 const int CLOCK_CS = 6;
 
-#elif defined(ARDUINO_PRO_MINI) || defined(ARDUINOR3)
-#include <SdFat.h>
-SdFat sd;
-SdFile PollutionLog;
-char sd_file_name[] = "arduinoR3data.csv";
-
-String pollutionLogStr;
-bool sd_is_file_open = false;
-// chip select for opcn2 is set to pin 8 on Arduino Uno and pro mini
-const int OPC_CS = 8;
-// chip select for arduino
-const int SD_CS = 9;
-
-// DS13074 chip select pin 
-const int CLOCK_CS = 10;
-#endif
-
 // OPCN2 Variables
-#if defined(TEENSY_35)
 
 OPCN2 alpha(OPC_CS);
 HistogramData hist;
 ConfigVars vars;
 
-#elif defined (ARDUINOR3) ||  defined (ARDUINO_PRO_MINI)
-
-OPCN2 alpha(OPC_CS);
-HistogramData hist;
-ConfigVars vars;
-
-#endif
-
-#if defined (TEENSY_35)
 // CO - Variables
 #define CO_PIN A16
 #define COx_PIN A17
@@ -97,19 +56,9 @@ ConfigVars vars;
 #define O3_PIN A18
 #define O3x_PIN A19
 
-// So - Variables
+// So - Variables - Not used yet
 //#define SO_PIN A3
 //#define SOx_PIN A2
-
-#elif defined(ARDUINO_PRO_MINI) || defined(ARDUINOR3)
-// No2 - Variables		
-#define CO_PIN A0		
-#define COx_PIN A1		
-						
-// NCo - Variables		
-#define NO2_PIN A2		
-#define NO2x_PIN A3		
-#endif
 
 struct
 {
@@ -205,14 +154,17 @@ enum SO_LEVELS
 // start from here to read the code
 void setup() {
 	DEBUG.begin(DEBUG_BAUDRATE);
-#if defined(LCB_AVAIL) 
-	//lcd_setup();
-#endif
+
+	lcd_setup();
+
 	opc_setup();
+
 	clock_setup();
+
 	sd_setup();
 
 	lcd.clear();
+
 	lcd.print("Waiting...");
 
 	delay(3000);
@@ -222,81 +174,64 @@ void loop() {
 	// TODO: introduce multithreading
 	// TODO: port each process into a library? maybe
 	No2_loop();
+
 	//So_loop();
+
 	Co_loop();
+
 	O3_loop();
+
 	opc_printHistogram();
+
 	clock_loop();
+
 	sd_loop();
 
-#if defined(LCB_AVAIL)
-	//lcd_loop();
-#endif
+	lcd_loop();
 }
 // end read here
 
 void sd_setup()
 {
 	DEBUG.println("SD Setup");
-#if defined(TEENSY_35)
-	if (!SD.begin(BUILTIN_SDCARD))
-	{
+	if (!SD.begin(BUILTIN_SDCARD)) {
 		DEBUG.println("SD: Failed to setup...");
-	}
-	else {
+	} else {
 		DEBUG.println("SD: Set Up success");
 	}
-#elif defined(ARDUINO_PRO_MINI) || defined(ARDUINOR3)
-	// lcd.clear();
-	// lcd.print("Setting up SD");
-	while(!sd.begin(SD_CS, SPI_HALF_SPEED))
-	{
-		DEBUG.println("SD CARD: Failed to set up SD Card");
-		// lcd.clear();
-		// lcd.print("SD CARD failed");
-		delay(1000);
-	}
-	// lcd.clear();
-	// lcd.print("SD Setup done");
-
-	delay(2000);
-#endif
 
 	pollutionLogStr = "y ,m, d, day,h,m,s, CO, COx, NO2, NO2x, O3, O3x PM1, PM2.5, PM10,";
-	sd_is_file_open = false;
+	is_sd_file_open = false;
 }
 
-void sd_loop() 
+void sd_loop()  
 {
-	if (!sd_is_file_open) {
+
+	if (!is_sd_file_open) {
 		// open the file
-#if defined(TEENSY_35)
 		PollutionLog = SD.open(sd_file_name, FILE_WRITE);
 		if (PollutionLog) {
-			sd_is_file_open = true;
+			is_sd_file_open = true;
 		}
-#elif defined(ARDUINO_PRO_MINI) || defined(ARDUINOR3)
-		if (PollutionLog.open(sd_file_name, O_WRITE | O_CREAT | O_APPEND)) {
-			sd_is_file_open = true;
-		}
-#endif
 	} 
 
-	if (sd_is_file_open) {
+	if (is_sd_file_open) {
 		DEBUG.println("writting to SD card: " + pollutionLogStr);
 		PollutionLog.println(pollutionLogStr);
 		PollutionLog.close();
 		// print to the serial port too:
 		Serial.println(pollutionLogStr);
-		sd_is_file_open = false;
+		is_sd_file_open = false;
+
 	// if the file isn't open, pop up an error:
 	} else {
-		Serial.println("error opening" + String(sd_file_name));
+		Serial.println("error opening " + String(sd_file_name));
 	}
 
-	// log data 
+	// write polution log into a file 
 	PollutionLog.println(pollutionLogStr);
  
+	// build the data into a string
 	pollutionLogStr = String(clock.dy) + 
 					"," + String(clock.yr) + 
 					"," + String(clock.mo) +
@@ -314,7 +249,7 @@ void sd_loop()
 					"," + String(hist.pm25)+
 					"," + String(hist.pm10);
 
-          //temperature/hum TODO
+    //temperature/hum TODO
 
 	// To make sure we log 100 times before closing the file
 	//sd_log_counter++;
@@ -330,27 +265,32 @@ void sd_loop()
 
 void clock_setup()
 {
-	// lcd.clear();
-	// lcd.print("Setting up CLK");
+	lcd.clear();
+	lcd.print("Setting up CLK");
+
 	DEBUG.println("Clock Set up");
 	rtc.begin(CLOCK_CS);
 	rtc.autoTime();
+
 	// Or you can use the rtc.setTime(s, m, h, day, date, month, year)
 	// function to explicitly set the time:
 	// e.g. 7:32:16 | Monday October 31, 2016:
 	//rtc.setTime(00, 40, 18, 7, 9, 02, 19);  // Uncomment to manually set time
 	delay(1000);
-	// lcd.clear();
-	// lcd.print("CKL Setup");
+
+	lcd.clear();
+	lcd.print("Clock Setup");
 }
 
 void clock_loop()
 {
 	rtc.update();
+
 	// Read the time:
 	clock.h = rtc.hour();
 	clock.m = rtc.minute();
 	clock.s = rtc.second();
+
 	// Read the day/date:
 	clock.dy = rtc.day();
 	clock.da = rtc.date();
@@ -365,7 +305,6 @@ void clock_loop()
 
 void opc_setup()
 {
-#if defined(TEENSY_35) 
 	DEBUG.println("Testing OPC-N2 v" + String(alpha.firm_ver.major) + "." + String(alpha.firm_ver.minor));
 
 	// Read and print the configuration variables
@@ -384,10 +323,12 @@ void opc_setup()
 	// wait for it to turn on
 	int opc_turn_attempt = 0;
 	bool alpha_status = false;
+
 	while (!alpha_status) {
 		alpha_status = alpha.on();
 		alpha.off();
 		opc_turn_attempt++;
+		// wait half a second
 		delay(500);
 		DEBUG.println("Turning ON OPC:" + String(opc_turn_attempt) +": "+ String(alpha_status));
 		lcd.clear();
@@ -397,41 +338,12 @@ void opc_setup()
 
 	lcd.clear();
 	lcd.print("OPC ON");
-#elif defined(ARDUINO_PRO_MINI) || defined(ARDUINOR3)
 
-	pinMode(OPC_CS, OUTPUT);
-	DEBUG.println("Testing OPC-N2 v" + String(alpha.firm_ver.major) + "." + String(alpha.firm_ver.minor));
-	delay(1000);
-	// Read and print the configuration variables
-	vars = alpha.read_configuration_variables();
-	Serial.println("\nConfiguration Variables");
-	Serial.print("\tGSC:\t"); Serial.println(vars.gsc);
-	Serial.print("\tSFR:\t"); Serial.println(vars.sfr);
-	Serial.print("\tLaser DAC:\t"); Serial.println(vars.laser_dac);
-	Serial.print("\tFan DAC:\t"); Serial.println(vars.fan_dac);
-	Serial.print("\tToF-SFR:\t"); Serial.println(vars.tof_sfr);
-	
-	// lcd.clear();
-	// lcd.print("Setting up OPC");
-	// wait for it to turn on
-	while (!alpha.on()) {
-		alpha.off();
-		DEBUG.println("Turning ON OPC");
-		// lcd.clear();
-		// lcd.setCursor(0, 0);
-		// lcd.print("Turning ON OPC");
-	}
-
-	// lcd.clear();
-	// lcd.print("OPC Setup Success");
-	delay(2000);
-#endif
 }
 
 // displays different size of particles
 void opc_printHistogram()
 {
-#if defined (TEENSY_35)
 	delay(500);
 	hist = alpha.read_histogram();
 
@@ -442,17 +354,7 @@ void opc_printHistogram()
 	DEBUG.print("PM2.5: "); Serial.println(hist.pm25);
 	DEBUG.print("PM10: "); Serial.println(hist.pm10);
 #endif
-#elif defined(ARDUINO_PRO_MINI) || defined(ARDUINOR3)
 
-	delay(500);
-	hist = alpha.read_histogram();
-	// Print out the histogram data
-	DEBUG.print("\nSampling Period:\t"); Serial.println(hist.period);
-	DEBUG.print("PM1: "); Serial.println(hist.pm1);
-	DEBUG.print("PM2.5: "); Serial.println(hist.pm25);
-	DEBUG.print("PM10: "); Serial.println(hist.pm10);
-
-#endif
 }
 
 // reads nitrogen dioxide levels
@@ -552,17 +454,17 @@ void trafficlight_loop() {
 
 	gas.light = (O3.light + Co.light + No2.light) / 3.0f;
 
-	if (gas.light = 0) {
+	if (gas.light == 0) {
 		gas.light_str = "LOW";
 		//LED green
 	}
 
-	if (gas.light = 1) {
+	if (gas.light == 1) {
 		gas.light_str = "MEDIUM";
 		//LED amber
 	}
 
-	if (gas.light = 2) {
+	if (gas.light == 2) {
 		gas.light_str = "HIGH";
 		//LED red
 	}
@@ -605,23 +507,22 @@ void trafficlight_loop() {
 
 	Pm.light = (pm10.light + pm25.light + pm1.light) / 3;
 
-	if (Pm.light = 0) {
+	if (Pm.light == 0) {
 		Pm.light_str = "LOW";
 		//LED green
 	}
 
-	if (Pm.light = 1.0f) {
+	if (Pm.light == 1.0f) {
 		Pm.light_str = "MEDIUM";
 		//LED amber
 	}
 
-	if (Pm.light = 2) {
+	if (Pm.light == 2) {
 		Pm.light_str = "HIGH";
 		//LED red TODO
 	}
 }
 
-#if defined(LCB_AVAIL) 
 void lcd_setup() 
 {
 	lcd.begin(20,4);
@@ -638,7 +539,7 @@ void lcd_loop()
 //	lcd.setCursor(0, 0);
 	//lcd.print("Pollution Monitor: ");
  
-   //if there is a problem TODO  //LCD.print("Pollution Monitor call engineer: ");  
+	//if there is a problem TODO  //LCD.print("Pollution Monitor call engineer: ");  
 
 	//lcd.setCursor(0, 0);
 	//lcd.print("Gas pollution: "); lcd.print(gas.light); //lcd.print(gas.light); // can this work yet?
@@ -655,8 +556,7 @@ void lcd_loop()
 
 	//lcd.setCursor(0, 3);
 	//lcd.print("SO2 = " + String(So.SO)); lcd.print("mg/m^3");
-	
-	//delay(5000);
+
 	lcd.clear();
 	lcd.setCursor(0, 0);
 	//lcd.print("Particle count: "); lcd.print(Pm.light); // 
@@ -669,8 +569,9 @@ void lcd_loop()
     lcd.setCursor(0, 3);
     lcd.print("PM10: "); lcd.print(hist.pm10); lcd.print("ug/m3 : ");
 
-     //delay(5000);
-     lcd.clear();
+    delay(2000);
+
+    lcd.clear();
   
 	lcd.clear();
 	lcd.noDisplay();
@@ -680,4 +581,4 @@ void lcd_loop()
 //button turn on screen TODO
 // traffic light RGB ordered TODO
 // to do microphone when button pressed
-#endif
+
