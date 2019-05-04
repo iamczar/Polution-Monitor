@@ -12,9 +12,9 @@
 
 
 // OPC SENSOR
-#include "opcn2m.h"
+#include "opcn2.h"
 // chip select for opcn2 is set to pin 10 on Teensy 3.5
-int OPC_CS = 10;
+int OPC_CS = 31;
 
 #include <SPI.h>
 
@@ -344,7 +344,6 @@ void opc_setup()
 // displays different size of particles
 void opc_printHistogram()
 {
-	delay(500);
 	hist = alpha.read_histogram();
 
 #if defined(DEBUG_OPC)
