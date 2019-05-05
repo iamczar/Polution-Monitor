@@ -10,7 +10,6 @@
 #define DEBUG_CLOCK
 
 
-
 // OPC SENSOR
 #include "opcn2.h"
 // chip select for opcn2 is set to pin 10 on Teensy 3.5
@@ -59,6 +58,18 @@ ConfigVars vars;
 // So - Variables - Not used yet
 //#define SO_PIN A3
 //#define SOx_PIN A2
+
+// GAS LED traffic lights
+#define gas_red_led_pin 17
+#define gas_yellow_led_pin 16
+#define gas_green_led_pin 15
+
+// PM LED traffic lights
+#define pm_red_led_pin 28
+#define pm_yellow_led_pin 29
+#define pm_green_led_pin 30
+
+
 
 struct
 {
@@ -151,9 +162,18 @@ enum SO_LEVELS
 	SO_HIGH_LVL = 200
 };
 
+enum LED 
+{
+	RED = 0,
+	YELLOW = 1,
+	GREEN = 2
+};
+
 // start from here to read the code
 void setup() {
 	DEBUG.begin(DEBUG_BAUDRATE);
+
+	led_setup();
 
 	lcd_setup();
 
@@ -174,22 +194,104 @@ void loop() {
 	// TODO: introduce multithreading
 	// TODO: port each process into a library? maybe
 	No2_loop();
-
+	
 	//So_loop();
-
+	
 	Co_loop();
-
+	
 	O3_loop();
-
+	
 	opc_printHistogram();
-
+	
 	clock_loop();
-
+	
 	sd_loop();
-
+	
 	lcd_loop();
+
 }
 // end read here
+
+void led_setup() 
+{
+	pinMode(gas_red_led_pin,OUTPUT);
+	pinMode(gas_yellow_led_pin, OUTPUT);
+	pinMode(gas_green_led_pin, OUTPUT);
+
+	pinMode(pm_red_led_pin, OUTPUT);
+	pinMode(pm_yellow_led_pin, OUTPUT);
+	pinMode(pm_green_led_pin, OUTPUT);
+}
+
+void gas_led_turn_on(int led)
+{
+	LED local_led = (LED)led;
+	switch (local_led)
+	{
+		case RED:
+			digitalWrite(gas_red_led_pin,HIGH);
+			break;
+		case YELLOW:
+			digitalWrite(gas_yellow_led_pin,HIGH);
+			break;
+		case GREEN:
+			digitalWrite(gas_green_led_pin,HIGH);
+			break;
+	}
+}
+
+void gas_led_turn_off(int led)
+{
+	LED local_led = (LED)led;
+	switch (local_led)
+	{
+	case RED:
+		digitalWrite(gas_red_led_pin, LOW);
+		break;
+	case YELLOW:
+		digitalWrite(gas_yellow_led_pin, LOW);
+		break;
+	case GREEN:
+		digitalWrite(gas_green_led_pin, LOW);
+		break;
+	}
+}
+
+void pm_led_turn_on(int led)
+{
+	LED local_led = (LED)led;
+	switch (local_led)
+	{
+	case RED:
+		digitalWrite(gas_red_led_pin, HIGH);
+		break;
+	case YELLOW:
+		digitalWrite(gas_yellow_led_pin, HIGH);
+		break;
+	case GREEN:
+		digitalWrite(gas_green_led_pin, HIGH);
+		break;
+	}
+}
+
+void pm_led_turn_off(int led)
+{
+	LED local_led = (LED)led;
+	switch (local_led)
+	{
+	case RED:
+		digitalWrite(pm_red_led_pin, LOW);
+		break;
+	case YELLOW:
+		digitalWrite(pm_yellow_led_pin, LOW);
+		break;
+	case GREEN:
+		digitalWrite(pm_green_led_pin, LOW);
+		break;
+	}
+}
+
+
 
 void sd_setup()
 {
@@ -271,6 +373,7 @@ void clock_setup()
 	DEBUG.println("Clock Set up");
 	rtc.begin(CLOCK_CS);
 	rtc.autoTime();
+	rtc.set24Hour(true);
 
 	// Or you can use the rtc.setTime(s, m, h, day, date, month, year)
 	// function to explicitly set the time:
@@ -455,17 +558,23 @@ void trafficlight_loop() {
 
 	if (gas.light == 0) {
 		gas.light_str = "LOW";
+		
 		//LED green
+		gas_led_turn_on(GREEN);
 	}
 
 	if (gas.light == 1) {
 		gas.light_str = "MEDIUM";
+		
 		//LED amber
+		gas_led_turn_on(YELLOW);
 	}
 
 	if (gas.light == 2) {
 		gas.light_str = "HIGH";
+		
 		//LED red
+		gas_led_turn_on(RED);
 	}
 
 	if (hist.pm1 > 3) {
@@ -509,16 +618,19 @@ void trafficlight_loop() {
 	if (Pm.light == 0) {
 		Pm.light_str = "LOW";
 		//LED green
+		pm_led_turn_on(GREEN);
 	}
 
 	if (Pm.light == 1.0f) {
 		Pm.light_str = "MEDIUM";
 		//LED amber
+		pm_led_turn_on(GREEN);
 	}
 
 	if (Pm.light == 2) {
 		Pm.light_str = "HIGH";
-		//LED red TODO
+		//LED red 
+		pm_led_turn_on(GREEN);
 	}
 }
 
